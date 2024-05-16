@@ -1,100 +1,33 @@
-# Json5 parser for luajit
+# Json5 parser for neovim
 
-This crate provides json5 deserialization for luajit.
+This crate provides json5 deserialization for neovim.
 
 Inspired and adapted from [json5-rs](https://github.com/callum-oakley/json5-rs)
 
-**NOTE**: When compiling for macos, please add this to your `$CARGO_HOME/config`
-per [this article](https://blog.kdheepak.com/loading-a-rust-library-as-a-lua-module-in-neovim.html)
-(which also inspired this project):
-
-```TOML
-[target.x86_64-apple-darwin]
-rustflags = [
-    "-C", "link-arg=-undefined",
-    "-C", "link-arg=dynamic_lookup",
-]
-
-[target.aarch64-apple-darwin]
-rustflags = [
-    "-C", "link-arg=-undefined",
-    "-C", "link-arg=dynamic_lookup",
-]
-```
-
-Also, if you haven't already, add ';?.dylib' to your `package.cpath` so it will
-be recognized by the interpreter.
-
 ## Usage
-
-You can simply require the module in your scripts and parse a string using the
-`parse` method:
-
-```lua
-local parse = require'json5'.parse
-local data = [[
-{
-    /* This is a comment */
-    ecma_identifier: 'works like a charm',
-    "string keys": [1,2,3], // trailing comma
-}
-]]
-local parsed_data = parse(data)
-```
-
-## Use with neovim
 
 You must have `cargo` installed and in your `$PATH`
 
-Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
-use {
-    'Joakker/lua-json5',
-    -- if you're on windows
-    -- run = 'powershell ./install.ps1'
-    run = './install.sh'
+{
+	"b1nhack/nvim-json5",
+	-- if you're on windows
+	-- run = 'powershell ./install.ps1'
+	build = "./install.sh",
+	lazy = false,
 }
 ```
 
-## Performance
+## Why should I use this instead of the builtin `json_decode`?
 
-Tested on neovim using the following script:
+Use this plugin to fix the error when [nvim-dap](https://github.com/mfussenegger/nvim-dap) reads vscode configuration files: 
+> Error executing vim.schedule lua callback: .../.local/share/nvim/lazy/nvim-dap/lua/dap/ext/vscode.lua:148: Expected object key string but found T_OBJ_END at character 291 stack traceback:
+	[C]: in function 'json_decode'
+
+Replace the json_decode function in the nvim-dap configuration file: 
 
 ```lua
-local data = [[ {"hello":"world"} ]]
-local json5 = require('json5').parse
-local json_decode = vim.fn.json_decode
-
-local time_json5, time_json_decode = 0, 0
-
-local aux
-
-for _ = 1, 1000 do
-    aux = os.clock()
-    json5(data)
-    time_json5 = time_json5 + (os.clock() - aux)
-end
-
-for _ = 1, 1000 do
-    aux = os.clock()
-    json_decode(data)
-    time_json_decode = time_json_decode + (os.clock() - aux)
-end
-
-print(('json5:        %.3fms'):format(time_json5))
-print(('json_decode:  %.3fms'):format(time_json_decode))
+require("dap.ext.vscode").json_decode = require("json5").parse
 ```
-
-On average:
-```
-json5:        0.023ms
-json_decode:  0.010ms
-```
-
-## So, why should I use this instead of the builtin `json_decode`?
-
-If performance is your concern, I think you're better off using the builtin
-function `json_decode`. The advantage this package has over regular json,
-however, is that you get json5 features, such as comments, trailing commas and
-more flexible string literals.
